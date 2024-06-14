@@ -86,9 +86,9 @@ async function run() {
         total_amount: orderedProduct?.price,
         currency: "BDT",
         tran_id: transactionId, // use unique tran_id for each api call
-        success_url: `http://localhost:8000/payment/success?transactionId=${transactionId}`,
-        fail_url: `http://localhost:8000/payment/fail?transactionId=${transactionId}`,
-        cancel_url: `http://localhost:8000/payment/cancel?transactionId=${transactionId}`,
+        success_url: `${process.env.SERVER_URL}/payment/success?transactionId=${transactionId}`,
+        fail_url: `${process.env.SERVER_URL}/payment/fail?transactionId=${transactionId}`,
+        cancel_url: `${process.env.SERVER_URL}/payment/cancel?transactionId=${transactionId}`,
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
         product_name: orderedProduct?.title,
@@ -128,7 +128,7 @@ async function run() {
       });
     });
 
-    app.post(`${process.env.APP_URL}/payment/success`, async (req, res) => {
+    app.post(`${process.env.SERVER_URL}/payment/success`, async (req, res) => {
       const { transactionId } = req.query;
       console.log(transactionId);
 
@@ -143,7 +143,7 @@ async function run() {
       }
     });
 
-    app.post("/payment/cancel", async (req, res) => {
+    app.post(`${process.env.SERVER_URL}/payment/cancel`, async (req, res) => {
       const { transactionId } = req.query;
 
       const result = await paymentCollection.deleteOne({
@@ -152,7 +152,7 @@ async function run() {
 
       res.redirect(`${process.env.APP_URL}/payment/cancel`);
     });
-    app.post("/payment/fail", async (req, res) => {
+    app.post(`${process.env.SERVER_URL}/payment/fail`, async (req, res) => {
       const { transactionId } = req.query;
 
       const result = await paymentCollection.deleteOne({
