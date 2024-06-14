@@ -128,22 +128,20 @@ async function run() {
       });
     });
 
-    app.post(`${process.env.SERVER_URL}/payment/success`, async (req, res) => {
+    app.post("/payment/success", async (req, res) => {
       const { transactionId } = req.query;
       console.log(transactionId);
-
       const result = await paymentCollection.updateOne(
         { transactionId: transactionId },
         { $set: { paid: true, paidAt: new Date() } }
       );
-      console.log(result);
 
       if (result.modifiedCount > 0) {
         res.redirect(`${process.env.APP_URL}/payment/success`);
       }
     });
 
-    app.post(`${process.env.SERVER_URL}/payment/cancel`, async (req, res) => {
+    app.post("/payment/cancel", async (req, res) => {
       const { transactionId } = req.query;
 
       const result = await paymentCollection.deleteOne({
@@ -152,7 +150,7 @@ async function run() {
 
       res.redirect(`${process.env.APP_URL}/payment/cancel`);
     });
-    app.post(`${process.env.SERVER_URL}/payment/fail`, async (req, res) => {
+    app.post("/payment/fail", async (req, res) => {
       const { transactionId } = req.query;
 
       const result = await paymentCollection.deleteOne({
