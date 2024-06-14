@@ -4,12 +4,12 @@ const cors = require("cors");
 
 const app = express();
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = process.env.MONGODB_URI;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -31,12 +31,70 @@ async function run() {
     const studentCollection = academixDB.collection("studentCollection");
     const paymentCollection = academixDB.collection("paymentCollection");
 
+    // courses collection
+    app.get("/courses", async (req, res) => {
+      const result = await courseCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/course/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await courseCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    app.delete("/course/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const result = await courseCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
+    app.post("/courses", async (req, res) => {
+      const courseData = req.body;
+      const result = await courseCollection.insertOne(courseData);
+      res.send(result);
+    });
+
+    app.patch("/course/edit/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const courseData = req.body;
+
+      const result = await courseCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: courseData },
+        { upsert: true }
+      );
+      res.send(result);
+    });
+
+    app.get("/course/edit/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const ObjectId = require("mongodb").ObjectId;
+
+      const result = await courseCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
     //user
+
+    app.get("/user/:email", async (req, res) => {
+      const userEmail = req.params;
+
+      const result = await userCollection.findOne(userEmail);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
+    });
 
     app.post("/user", async (req, res) => {
       const user = req.body;
-
-      console.log(user);
 
       const isUserExist = await userCollection.findOne({ email: user.email });
 
