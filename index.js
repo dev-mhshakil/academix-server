@@ -83,28 +83,28 @@ async function run() {
       const transactionId = new ObjectId().toString();
 
       const data = {
-        total_amount: orderedProduct.price,
+        total_amount: orderedProduct?.price,
         currency: "BDT",
         tran_id: transactionId, // use unique tran_id for each api call
-        success_url: `https://academix-client-two.vercel.app/payment/success`,
-        fail_url: "http://localhost:5173/payment/fail",
-        cancel_url: "http://localhost:5173/payment/cancel",
+        success_url: `http://localhost:8000/payment/success?transactionId=${transactionId}`,
+        fail_url: `http://localhost:8000/payment/fail?transactionId=${transactionId}`,
+        cancel_url: `http://localhost:8000/payment/cancel?transactionId=${transactionId}`,
         ipn_url: "http://localhost:3030/ipn",
         shipping_method: "Courier",
-        product_name: orderedProduct.title,
+        product_name: orderedProduct?.title,
         product_category: "Electronic",
         product_profile: "general",
-        cus_name: paymentData.name,
-        cus_email: paymentData.email,
+        cus_name: paymentData?.name,
+        cus_email: paymentData?.email,
         cus_add1: "Dhaka",
         cus_add2: "Dhaka",
         cus_city: "Dhaka",
         cus_state: "Dhaka",
         cus_postcode: "1000",
         cus_country: "Bangladesh",
-        cus_phone: paymentData.phone,
+        cus_phone: paymentData?.phone,
         cus_fax: "01711111111",
-        ship_name: paymentData.name,
+        ship_name: paymentData?.name,
         ship_add1: "Dhaka",
         ship_add2: "Dhaka",
         ship_city: "Dhaka",
@@ -128,20 +128,38 @@ async function run() {
       });
     });
 
-    app.post("/payment/success", async (req, res) => {
-      const transactionId = req.query;
+    app.post(`${process.env.APP_URL}/payment/success`, async (req, res) => {
+      const { transactionId } = req.query;
+      console.log(transactionId);
 
-      const result = paymentCollection.updateOne(
-        { transactionId },
+      const result = await paymentCollection.updateOne(
+        { transactionId: transactionId },
         { $set: { paid: true, paidAt: new Date() } }
       );
+      console.log(result);
 
       if (result.modifiedCount > 0) {
-        res.send({
-          status: "Success",
-          message: "Payment success",
-        });
+        res.redirect(`${process.env.APP_URL}/payment/success`);
       }
+    });
+
+    app.post("/payment/cancel", async (req, res) => {
+      const { transactionId } = req.query;
+
+      const result = await paymentCollection.deleteOne({
+        transactionId: transactionId,
+      });
+
+      res.redirect(`${process.env.APP_URL}/payment/cancel`);
+    });
+    app.post("/payment/fail", async (req, res) => {
+      const { transactionId } = req.query;
+
+      const result = await paymentCollection.deleteOne({
+        transactionId: transactionId,
+      });
+
+      res.redirect(`${process.env.APP_URL}/payment/fail`);
     });
 
     // courses collection
