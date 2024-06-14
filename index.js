@@ -1,24 +1,61 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-
-const app = express();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+var jwt = require("jsonwebtoken");
 
 const port = process.env.PORT || 8000;
+
+const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = process.env.MONGODB_URI;
+const jwtSecret = process.env.JWT_SECRET;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+//database uri
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
   },
+});
+
+function createToken(user) {
+  const token = jwt.sign(
+    {
+      data: user?.email,
+    },
+    jwtSecret,
+    { expiresIn: "7d" }
+  );
+  return token;
+}
+
+function verifyToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send("Authorization header missing");
+  }
+
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send("Token missing");
+  }
+
+  try {
+    const verify = jwt.verify(token, jwtSecret);
+    req.user = verify.data;
+    next();
+  } catch (error) {
+    return res.status(401).send("Invalid token");
+  }
+}
+
+app.get("/", async (req, res) => {
+  await res.send("Welcome to BookHive Server");
 });
 
 async function run() {
@@ -43,7 +80,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/course/:id", async (req, res) => {
+    app.delete("/course/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const result = await courseCollection.deleteOne({
@@ -52,13 +89,13 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/courses", async (req, res) => {
+    app.post("/courses", verifyToken, async (req, res) => {
       const courseData = req.body;
       const result = await courseCollection.insertOne(courseData);
       res.send(result);
     });
 
-    app.patch("/course/edit/:id", async (req, res) => {
+    app.patch("/course/edit/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const courseData = req.body;
@@ -93,8 +130,11 @@ async function run() {
       res.send(users);
     });
 
-    app.post("/user", async (req, res) => {
+    app.post("/user", verifyToken, async (req, res) => {
       const user = req.body;
+
+      const token = createToken(user);
+      console.log(token);
 
       const isUserExist = await userCollection.findOne({ email: user.email });
 
@@ -102,11 +142,15 @@ async function run() {
         return res.send({
           status: "Success",
           message: "Login success",
+          token: token,
         });
       }
       const result = await userCollection.insertOne(user);
-      console.log(result);
-      res.json(result);
+      res.json({
+        status: "Success",
+        message: "User created successfully",
+        token: token,
+      });
     });
   } catch (error) {
     console.error("Failed to connect to MongoDB", error);
