@@ -77,7 +77,7 @@ async function run() {
     const paymentCollection = academixDB.collection("paymentCollection");
 
     // payment
-    app.post("/orders", verifyToken, async (req, res) => {
+    app.post("/orders", async (req, res) => {
       const paymentData = req.body;
 
       const orderedProduct = await courseCollection.findOne({
