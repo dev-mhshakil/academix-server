@@ -77,7 +77,7 @@ async function run() {
     const paymentCollection = academixDB.collection("paymentCollection");
 
     // payment
-    app.post("/orders", async (req, res) => {
+    app.post("/orders", verifyToken, async (req, res) => {
       const paymentData = req.body;
 
       const orderedProduct = await courseCollection.findOne({
@@ -90,10 +90,10 @@ async function run() {
         total_amount: orderedProduct?.price,
         currency: "BDT",
         tran_id: transactionId, // use unique tran_id for each api call
-        success_url: `https://academix-server-xe39.onrender.com/payment/success?transactionId=${transactionId}`,
-        fail_url: `https://academix-server-xe39.onrender.com/payment/fail?transactionId=${transactionId}`,
-        cancel_url: `https://academix-server-xe39.onrender.com/payment/cancel?transactionId=${transactionId}`,
-        ipn_url: "http://localhost:3030/ipn",
+        success_url: `${process.env.SERVER_URL}/payment/success?transactionId=${transactionId}`,
+        fail_url: `${process.env.SERVER_URL}/payment/fail?transactionId=${transactionId}`,
+        cancel_url: `${process.env.SERVER_URL}/payment/cancel?transactionId=${transactionId}`,
+        ipn_url: `${process.env.SERVER_URL}/ipn`,
         shipping_method: "Courier",
         product_name: orderedProduct?.title,
         product_category: "Electronic",
@@ -141,7 +141,7 @@ async function run() {
       );
 
       if (result.modifiedCount > 0) {
-        res.redirect(`https://academix-client-two.vercel.app/payment/success`);
+        res.redirect(`${process.env.APP_URL}/payment/success`);
       }
     });
 
@@ -161,7 +161,7 @@ async function run() {
         transactionId: transactionId,
       });
 
-      res.redirect(`https://academix-client-two.vercel.app/payment/fail`);
+      res.redirect(`${process.env.APP_URL}/payment/fail`);
     });
 
     // courses collection
@@ -186,12 +186,34 @@ async function run() {
     });
 
     app.post("/courses", verifyToken, async (req, res) => {
-      const course = req.body;
+      const {
+        title,
+        category,
+        price,
+        courseDuration,
+        level,
+        courseBanner,
+        description,
+        instructor,
+        instructorPhoto,
+        userEmail,
+      } = req.body;
+
       const time = new Date();
       const courseData = {
-        ...courseData,
+        title,
+        category,
+        price,
+        courseDuration,
+        level,
+        courseBanner,
+        description,
+        instructor,
+        instructorPhoto,
+        userEmail,
         createdAt: time,
       };
+
       const result = await courseCollection.insertOne(courseData);
       res.send(result);
     });
@@ -199,10 +221,30 @@ async function run() {
     app.patch("/course/edit/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
-      const courseData = req.body;
+      const {
+        title,
+        category,
+        price,
+        courseDuration,
+        level,
+        courseBanner,
+        description,
+        instructor,
+        instructorPhoto,
+        userEmail,
+      } = req.body;
       const time = new Date();
       const updatedData = {
-        ...courseData,
+        title,
+        category,
+        price,
+        courseDuration,
+        level,
+        courseBanner,
+        description,
+        instructor,
+        instructorPhoto,
+        userEmail,
         updatedAt: time,
       };
       const result = await courseCollection.updateOne(
@@ -221,6 +263,15 @@ async function run() {
       const result = await courseCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+
+    app.get("/courses/:email", async (req, res) => {
+      const email = req.params.email;
+
+      const result = await courseCollection
+        .find({ userEmail: email })
+        .toArray();
+      res.send(result);
+    });
     //user
 
     app.get("/user/:email", async (req, res) => {
@@ -230,12 +281,35 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/user/:email", verifyToken, async (req, res) => {
+      const userEmail = req.params.email;
+      const { name, email, phone, photoURL, address } = req.body;
+      const date = new Date();
+      const updatedAt = date.toUTCString();
+
+      const userData = {
+        name,
+        email,
+        phone,
+        photoURL,
+        address,
+        updatedAt: updatedAt,
+      };
+
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        { $set: userData },
+        { upsert: true }
+      );
+      res.send(result);
+    });
+
     app.get("/users", async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     });
 
-    app.post("/user", verifyToken, async (req, res) => {
+    app.post("/user", async (req, res) => {
       const user = req.body;
 
       const token = createToken(user);
