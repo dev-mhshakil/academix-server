@@ -18,6 +18,10 @@ const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASSWORD;
 const is_live = false; //true for live, false for sandbox
 
+app.get("/", (req, res) => {
+  res.send("Welcome to the academix domain!");
+});
+
 //database uri
 const client = new MongoClient(uri, {
   serverApi: {
@@ -182,7 +186,12 @@ async function run() {
     });
 
     app.post("/courses", verifyToken, async (req, res) => {
-      const courseData = req.body;
+      const course = req.body;
+      const time = new Date();
+      const courseData = {
+        ...courseData,
+        createdAt: time,
+      };
       const result = await courseCollection.insertOne(courseData);
       res.send(result);
     });
@@ -191,10 +200,14 @@ async function run() {
       const id = req.params.id;
 
       const courseData = req.body;
-
+      const time = new Date();
+      const updatedData = {
+        ...courseData,
+        updatedAt: time,
+      };
       const result = await courseCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: courseData },
+        { $set: updatedData },
         { upsert: true }
       );
       res.send(result);
@@ -251,10 +264,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-app.get("/", (req, res) => {
-  res.send("Welcome to the academix domain!");
-});
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
